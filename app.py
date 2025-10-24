@@ -109,8 +109,9 @@ if st.session_state.points:
 
 st.divider()
 
-# ⚡ Aspect 계산 버튼
-if st.button("🔍 Aspect 계산하기"):
+
+# ⚡ Aspect + Pattern 통합 계산 버튼
+if st.button("🔍 Calculate Aspects & Patterns"):
     results = []
     n = len(st.session_state.points)
 
@@ -142,7 +143,6 @@ if st.button("🔍 Aspect 계산하기"):
                 if pd.isna(target_row):
                     continue
 
-                # 🎯 단순 lookup 방식
                 diff_to_target = abs(row2 - target_row)
                 diff_to_target = min(diff_to_target, 21600 - diff_to_target)
 
@@ -158,67 +158,59 @@ if st.button("🔍 Aspect 계산하기"):
                         "Orb": f"{orb_val:.2f}°"
                     })
 
-    if results:
-        st.success("✅ Aspect 계산 완료!")
-        df_results = pd.DataFrame(results)
+    # 결과가 없을 경우
+    if not results:
+        st.warning("⚠️ No valid aspects found.")
+        st.stop()
 
-        # ✅ 세션에 결과 저장 (rerun 시 유지용)
-        st.session_state["df_results"] = df_results
+    # ✅ Aspect 결과 표시
+    st.success("✅ Aspect & Pattern analysis complete!")
+    df_results = pd.DataFrame(results)
+    st.dataframe(df_results, use_container_width=True)
+    csv = df_results.to_csv(index=False, encoding="utf-8-sig")
+    st.download_button("📥 Download CSV", csv, file_name="aspects_results.csv")
 
-        st.dataframe(df_results, use_container_width=True)
-        csv = df_results.to_csv(index=False, encoding="utf-8-sig")
-        st.download_button("📥 결과 CSV 다운로드", csv, file_name="aspects_results.csv")
+    # 🔮 패턴 분석 단계
+    from detect_patterns import detect_patterns
+    from pattern_keywords import PATTERN_KEYWORDS
 
-        # 🔮 도형 탐지 기능 추가
-        from detect_patterns import detect_patterns
-        from pattern_keywords import PATTERN_KEYWORDS
+    patterns = detect_patterns(df_results)
 
-        st.divider()
-        st.header("🔮 Aspect Patterns Analyzer")
+    major_results = {}
+    minor_results = {}
 
-        # ✅ df_results가 세션에 존재할 때만 버튼 표시
-        if "df_results" in st.session_state:
-            if st.button("✨ 도형 자동 탐지하기"):
-                df_results = st.session_state["df_results"]
-                patterns = detect_patterns(df_results)
+    for name, combos in patterns.items():
+        if not combos:
+            continue
+        meta = PATTERN_KEYWORDS.get(name, {})
+        category = meta.get("category", "Minor")
+        keyword = meta.get("keyword", "")
 
-                major_results = {}
-                minor_results = {}
+        if category == "Major":
+            major_results[name] = (keyword, combos)
+        else:
+            minor_results[name] = (keyword, combos)
 
-                for name, combos in patterns.items():
-                    if not combos:
-                        continue
-                    meta = PATTERN_KEYWORDS.get(name, {})
-                    category = meta.get("category", "Minor")
-                    keyword = meta.get("keyword", "")
+    st.divider()
 
-                    if category == "Major":
-                        major_results[name] = (keyword, combos)
-                    else:
-                        minor_results[name] = (keyword, combos)
-
-                # 🌟 Major Patterns
-                st.subheader("🌟 Major Patterns")
-                if not major_results:
-                    st.info("No major patterns detected.")
-                else:
-                    for name, (kw, combos) in major_results.items():
-                        st.markdown(f"**{name}** — {kw}")
-                        for c in combos:
-                            st.write(" • ", " – ".join(c))
-                        st.markdown("---")
-
-                # ✴️ Minor Patterns
-                st.subheader("✴️ Minor Patterns")
-                if not minor_results:
-                    st.info("No minor patterns detected.")
-                else:
-                    for name, (kw, combos) in minor_results.items():
-                        st.markdown(f"**{name}** — {kw}")
-                        for c in combos:
-                            st.write(" • ", " – ".join(c))
-                        st.markdown("---")
-
+    # 🌟 Major Patterns
+    st.subheader("🌟 Major Patterns")
+    if not major_results:
+        st.info("No major patterns detected.")
     else:
-        st.warning("⚠️ 성립되는 Aspect가 없습니다.")
+        for name, (kw, combos) in major_results.items():
+            st.markdown(f"**{name}** — {kw}")
+            for c in combos:
+                st.write(" • ", " – ".join(c))
+            st.markdown("---")
 
+    # ✴️ Minor Patterns
+    st.subheader("✴️ Minor Patterns")
+    if not minor_results:
+        st.info("No minor patterns detected.")
+    else:
+        for name, (kw, combos) in minor_results.items():
+            st.markdown(f"**{name}** — {kw}")
+            for c in combos:
+                st.write(" • ", " – ".join(c))
+            st.markdown("---")
