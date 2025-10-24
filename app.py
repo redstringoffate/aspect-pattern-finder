@@ -66,7 +66,7 @@ def to_row_index(sign: str, degree: int, minute: int):
     return sign_index * 1800 + degree * 60 + minute
 
 # 🧩 UI 시작
-st.title("🔮 Personal Aspect Mapper (Lookup Ver.)")
+st.title("🔮 Aspect Pattern Finder")
 st.caption("엑셀의 물리적 row 기반으로 lookup하는 방식 (수학 계산 없음).")
 
 # 세션 상태 초기화
@@ -214,3 +214,4 @@ if st.button("🔍 Calculate Aspects & Patterns"):
             for c in combos:
                 st.write(" • ", " – ".join(c))
             st.markdown("---")
+
